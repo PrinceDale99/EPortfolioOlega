@@ -312,13 +312,83 @@ lawrenceDescription.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0)); //
     }
 
     private JPanel createContactPage() {
-        JPanel panel = new JPanel(new BorderLayout());
-        JLabel label = new JLabel("Contact Us", JLabel.CENTER);
-        label.setFont(new Font("Arial", Font.BOLD, 24));
-        panel.add(label, BorderLayout.CENTER);
-        panel.setBackground(new Color(244, 236, 223));
-        return panel;
-    }
+    JPanel panel = new JPanel();
+    panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS)); // Vertical layout
+    panel.setBackground(new Color(139, 0, 0)); // Maroon color scheme
+    panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20)); // Padding
+
+    // Title - Contact Us
+    JLabel titleLabel = new JLabel("Contact Us");
+    titleLabel.setFont(new Font("Poppins", Font.BOLD, 36));
+    titleLabel.setForeground(Color.WHITE);
+    titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT); // Center alignment
+    panel.add(titleLabel);
+    panel.add(Box.createRigidArea(new Dimension(0, 20))); // Add space between components
+
+    // First Contact - John Peter Olega
+    panel.add(createContactSection("John Peter Olega", "John Peter Olega",
+            "https://www.facebook.com/johnpeter.olega.5?mibextid=ZbWKwL", "@jpolega_06",
+            "https://www.instagram.com/jpolega_06?igsh=MWIxemxqcHZ6dzZxbQ=="));
+
+    // Space between contacts
+    panel.add(Box.createRigidArea(new Dimension(0, 20)));
+
+    // Second Contact - Lawrence Lucero
+    panel.add(createContactSection("Lawrence Lucero", "Lawrence Lucero",
+            "https://www.facebook.com/profile.php?id=100072534756475&mibextid=ZbWKwL", "@lo.ririnsd",
+            "https://www.instagram.com/lo.ririnsd?igsh=Ynptb3lyOWQzMnZ4"));
+
+    return panel;
+}
+
+private JPanel createContactSection(String name, String facebookName, String facebookUrl, String instagramHandle, String instagramUrl) {
+    JPanel contactPanel = new JPanel();
+    contactPanel.setLayout(new BoxLayout(contactPanel, BoxLayout.Y_AXIS));
+    contactPanel.setBackground(new Color(139, 0, 0)); // Match the background
+    contactPanel.setForeground(Color.WHITE);
+
+    // Name Header (H2)
+    JLabel nameLabel = new JLabel(name);
+    nameLabel.setFont(new Font("Poppins", Font.BOLD, 24));
+    nameLabel.setForeground(Color.WHITE);
+    nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+    contactPanel.add(nameLabel);
+
+    // Facebook Info
+    contactPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Space
+    contactPanel.add(createLinkButton("Facebook: " + facebookName, facebookUrl));
+
+    // Instagram Info
+    contactPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Space
+    contactPanel.add(createLinkButton("Instagram: " + instagramHandle, instagramUrl));
+
+    return contactPanel;
+}
+
+private JPanel createLinkButton(String label, String url) {
+    JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+    panel.setBackground(new Color(139, 0, 0)); // Maroon background
+    
+    JLabel linkLabel = new JLabel(label);
+    linkLabel.setFont(new Font("Poppins", Font.PLAIN, 18));
+    linkLabel.setForeground(Color.WHITE);
+    panel.add(linkLabel);
+
+    JButton linkButton = new JButton("Open");
+    linkButton.setFont(new Font("Arial", Font.BOLD, 14));
+    linkButton.setBackground(new Color(244, 236, 223)); // Light color for contrast
+    linkButton.setForeground(Color.BLACK);
+    linkButton.addActionListener(e -> {
+        try {
+            Desktop.getDesktop().browse(new java.net.URI(url));
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    });
+    panel.add(linkButton);
+
+    return panel;
+}
 
     private void showAddCodeDialog() {
     JDialog dialog = new JDialog(this, "Add Your Code", true);
@@ -362,7 +432,7 @@ lawrenceDescription.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0)); //
     private void addCode(String codeName, String code) {
     // Create a label to display the code name
     JLabel codeLabel = new JLabel(codeName);
-    
+
     // Create a text area to display the actual code
     JTextArea codeTextArea = new JTextArea(code);
     codeTextArea.setEditable(false); // Make it read-only
@@ -377,19 +447,62 @@ lawrenceDescription.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0)); //
     runButton.setForeground(Color.WHITE);
     runButton.addActionListener(e -> runCode(code)); // Run the provided code when the button is clicked
 
-    // Create a panel to hold the label, text area, and button
-    JPanel codePanel = new JPanel(new BorderLayout());
+    // Create a panel to hold the label, text area, and buttons
+    JPanel codePanel = new JPanel(new BorderLayout()); // Define codePanel here
     codePanel.add(codeLabel, BorderLayout.NORTH); // Add the label to the north
     codePanel.add(new JScrollPane(codeTextArea), BorderLayout.CENTER); // Add the text area to the center
-    codePanel.add(runButton, BorderLayout.SOUTH); // Add the button to the south
 
-    // Add the panel to the works panel
+    // Create a button to delete the code
+    JButton deleteButton = new JButton("Delete");
+    deleteButton.setFont(new Font("Arial", Font.BOLD, 16));
+    deleteButton.setBackground(new Color(255, 69, 0)); // Red color for delete
+    deleteButton.setForeground(Color.WHITE);
+    deleteButton.addActionListener(e -> {
+        worksPanel.remove(codePanel); // Remove the panel from worksPanel
+        worksPanel.revalidate();
+        worksPanel.repaint();
+        deleteCode(codeName); // Call deleteCode method to remove it from the file
+    });
+
+    // Create a panel for the buttons
+    JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+    buttonPanel.add(runButton);
+    buttonPanel.add(deleteButton);
+
+    codePanel.add(buttonPanel, BorderLayout.SOUTH); // Add the buttons to the south
+
+    // Add the code panel to the works panel
     worksPanel.add(codePanel);
     worksPanel.revalidate(); // Refresh the works panel
     worksPanel.repaint(); // Repaint to show the new entry
-    
+
     // Save the code along with the name in works.dat
     saveWorks(codeName, code); // Call saveWorks to store the new code entry
+}
+
+
+private void deleteCode(String codeName) {
+    List<String> works = new ArrayList<>();
+
+    // Load the existing works from the file
+    File file = new File(WORKS_FILE);
+    if (file.exists() && file.length() != 0) {
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+            works = (List<String>) ois.readObject(); // Load previous works
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Remove the work with the matching codeName
+    works.removeIf(work -> work.split(":")[0].equals(codeName)); // Remove the code with the matching name
+
+    // Save the updated works list back to the file
+    try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(WORKS_FILE))) {
+        oos.writeObject(works); // Write the updated list of works
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
 }
 
     private void runCode(String code) {
@@ -505,13 +618,15 @@ lawrenceDescription.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0)); //
 private void loadWorks() {
     File file = new File(WORKS_FILE);
     
+    // Step 1: Check if the file exists and is not empty
     if (!file.exists() || file.length() == 0) {
         System.out.println("No works file found or the file is empty.");
         return; // Exit early if the file doesn't exist or is empty
     }
     
+    // Step 2: Load the previously saved works from the file
     try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
-        List<String> works = (List<String>) ois.readObject();
+        List<String> works = (List<String>) ois.readObject(); // Read the saved list of works
         for (String work : works) {
             System.out.println("Processing work entry: " + work);
             if (work == null || work.isEmpty()) {
@@ -519,9 +634,10 @@ private void loadWorks() {
                 continue;
             }
 
-            String[] parts = work.split(":", 2); // Split into two parts
+            // Step 3: Split the entry into code name and actual code
+            String[] parts = work.split(":", 2); // Split into two parts: code name and code content
             if (parts.length == 2) {
-                addCode(parts[0], parts[1]); // Add code with name and actual code
+                addCode(parts[0], parts[1]); // Add the saved code to the panel (code name and code)
             } else {
                 System.err.println("Invalid work format: " + work);
             }
@@ -536,31 +652,41 @@ private void loadWorks() {
 }
 
     private void saveWorks(String codeName, String code) {
-    // Create a list to hold the works to be saved
     List<String> works = new ArrayList<>();
-    
-    // Loop through the components in worksPanel
-    for (Component component : worksPanel.getComponents()) {
-        if (component instanceof JPanel) { // Check if the component is a JPanel
-            JLabel label = (JLabel) ((JPanel) component).getComponent(0); // Get the code name label
-            String existingCode = ""; // Initialize with empty string
-            // Check if the current label matches the codeName
-            if (label.getText().equals(codeName)) {
-                existingCode = code; // Use the new code being added
-            }
-            // Save the code name and code to the works list
-            works.add(label.getText() + ":" + existingCode); // Save the code name and code
+
+    // Step 1: Load the existing works from the file (if it exists)
+    File file = new File(WORKS_FILE);
+    if (file.exists() && file.length() != 0) { // Check if the file exists and is not empty
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+            works = (List<String>) ois.readObject(); // Load previous works
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
         }
     }
-    
-    // Also add the newly added code if not already present
-    works.add(codeName + ":" + code); // Add the new entry
-    
-    // Save the works list to the file
+
+    // Step 2: Add or update the new code in the list
+    boolean codeExists = false; // Flag to check if the code is already in the list
+
+    for (int i = 0; i < works.size(); i++) {
+        String work = works.get(i);
+        String[] parts = work.split(":", 2); // Split the work into code name and code
+        if (parts.length == 2 && parts[0].equals(codeName)) { // If the code name matches
+            works.set(i, codeName + ":" + code); // Update the existing code
+            codeExists = true; // Set flag to true
+            break;
+        }
+    }
+
+    // Step 3: If the code doesn't exist, add it to the list
+    if (!codeExists) {
+        works.add(codeName + ":" + code); // Add the new code
+    }
+
+    // Step 4: Save the updated list of works back to the file
     try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(WORKS_FILE))) {
-        oos.writeObject(works); // Write the works list to the works.dat file
+        oos.writeObject(works); // Write the updated list of works
     } catch (IOException e) {
-        e.printStackTrace(); // Handle potential IO exceptions
+        e.printStackTrace();
     }
 }
 
