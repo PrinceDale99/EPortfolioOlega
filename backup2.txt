@@ -1,0 +1,367 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
+import javax.tools.JavaCompiler;
+import javax.tools.ToolProvider;
+import javax.tools.DiagnosticCollector;
+import javax.tools.JavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.Diagnostic;
+import java.util.Arrays;
+
+public class EP extends JFrame {
+    private CardLayout cardLayout;
+    private JPanel contentPanel;
+    private JTextArea knowledgeArea;
+    private JPanel worksPanel;
+    private JButton editButton, lockButton, addCodeButton;
+    private boolean isEditable = false;
+    private final String WORKS_FILE = "works.dat";
+    private final String KNOWLEDGE_FILE = "knowledge.dat";
+
+    public EP() {
+        setTitle("LuceroOlegaEPortfolio");
+        setSize(800, 600);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        // Sidebar Menu
+        JPanel menuPanel = new JPanel();
+        menuPanel.setLayout(new GridLayout(5, 1));
+        menuPanel.setBackground(new Color(63, 20, 20));
+
+        String[] buttons = {"Home", "About Us", "Our Works", "Our Knowledge", "Contact Us"};
+        for (String btn : buttons) {
+            JButton button = new JButton(btn);
+            button.setFocusPainted(false);
+            button.setFont(new Font("Arial", Font.BOLD, 16));
+            button.setBackground(new Color(139, 0, 0));
+            button.setForeground(Color.WHITE);
+            button.addActionListener(e -> cardLayout.show(contentPanel, btn));
+            menuPanel.add(button);
+        }
+
+        add(menuPanel, BorderLayout.WEST);
+
+        // Content Panel with CardLayout
+        cardLayout = new CardLayout();
+        contentPanel = new JPanel(cardLayout);
+        add(contentPanel, BorderLayout.CENTER);
+
+        // Pages
+        contentPanel.add(createHomePage(), "Home");
+        contentPanel.add(createAboutPage(), "About Us");
+        contentPanel.add(createWorksPage(), "Our Works");
+        contentPanel.add(createKnowledgePage(), "Our Knowledge");
+        contentPanel.add(createContactPage(), "Contact Us");
+
+        setVisible(true);
+    }
+
+    private JPanel createHomePage() {
+        JPanel panel = new JPanel(new BorderLayout());
+        JLabel label = new JLabel("Welcome to Home Page", JLabel.CENTER);
+        label.setFont(new Font("Arial", Font.BOLD, 24));
+        panel.add(label, BorderLayout.CENTER);
+        panel.setBackground(new Color(244, 236, 223));
+        return panel;
+    }
+
+    private JPanel createAboutPage() {
+        JPanel panel = new JPanel(new BorderLayout());
+        JLabel label = new JLabel("About Us", JLabel.CENTER);
+        label.setFont(new Font("Arial", Font.BOLD, 24));
+        panel.add(label, BorderLayout.CENTER);
+        panel.setBackground(new Color(244, 236, 223));
+        return panel;
+    }
+
+    private JPanel createWorksPage() {
+        JPanel panel = new JPanel(new BorderLayout());
+        worksPanel = new JPanel();
+        worksPanel.setLayout(new BoxLayout(worksPanel, BoxLayout.Y_AXIS));
+        JScrollPane scrollPane = new JScrollPane(worksPanel);
+        panel.add(scrollPane, BorderLayout.CENTER);
+
+        addCodeButton = new JButton("Add Code");
+        addCodeButton.setFont(new Font("Arial", Font.BOLD, 16));
+        addCodeButton.setBackground(new Color(139, 0, 0));
+        addCodeButton.setForeground(Color.WHITE);
+        addCodeButton.addActionListener(e -> showAddCodeDialog());
+
+        panel.add(addCodeButton, BorderLayout.SOUTH);
+        panel.setBackground(new Color(244, 236, 223));
+        loadWorks();
+        return panel;
+    }
+
+    private JPanel createKnowledgePage() {
+        JPanel panel = new JPanel(new BorderLayout());
+        knowledgeArea = new JTextArea();
+        knowledgeArea.setEditable(false);
+        panel.add(new JScrollPane(knowledgeArea), BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel();
+        lockButton = new JButton("Lock");
+        lockButton.setFont(new Font("Arial", Font.BOLD, 16));
+        lockButton.setBackground(new Color(139, 0, 0));
+        lockButton.setForeground(Color.WHITE);
+        lockButton.addActionListener(e -> lockContent());
+
+        editButton = new JButton("Edit");
+        editButton.setFont(new Font("Arial", Font.BOLD, 16));
+        editButton.setBackground(new Color(139, 0, 0));
+        editButton.setForeground(Color.WHITE);
+        editButton.addActionListener(e -> editContent());
+
+        buttonPanel.add(lockButton);
+        buttonPanel.add(editButton);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+        panel.setBackground(new Color(244, 236, 223));
+        loadKnowledge();
+        return panel;
+    }
+
+    private JPanel createContactPage() {
+        JPanel panel = new JPanel(new BorderLayout());
+        JLabel label = new JLabel("Contact Us", JLabel.CENTER);
+        label.setFont(new Font("Arial", Font.BOLD, 24));
+        panel.add(label, BorderLayout.CENTER);
+        panel.setBackground(new Color(244, 236, 223));
+        return panel;
+    }
+
+    private void showAddCodeDialog() {
+        JDialog dialog = new JDialog(this, "Add Your Code", true);
+        dialog.setLayout(new GridLayout(3, 2));
+        JTextField codeNameField = new JTextField();
+        JTextArea codeArea = new JTextArea();
+        dialog.add(new JLabel("Project Name:"));
+        dialog.add(codeNameField);
+        dialog.add(new JLabel("Java Code:"));
+        dialog.add(new JScrollPane(codeArea));
+
+        JButton addCodeButton = new JButton("Add Code");
+        addCodeButton.setFont(new Font("Arial", Font.BOLD, 16));
+        addCodeButton.setBackground(new Color(139, 0, 0));
+        addCodeButton.setForeground(Color.WHITE);
+        addCodeButton.addActionListener(e -> {
+            String codeName = codeNameField.getText();
+            String code = codeArea.getText();
+            if (!codeName.isEmpty() && !code.isEmpty()) {
+                addCode(codeName, code);
+                dialog.dispose();
+            }
+        });
+
+        dialog.add(addCodeButton);
+        dialog.setSize(400, 300);
+        dialog.setVisible(true);
+    }
+
+    private void addCode(String codeName, String code) {
+        JLabel codeLabel = new JLabel(codeName);
+        JButton runButton = new JButton("Run");
+        runButton.setFont(new Font("Arial", Font.BOLD, 16));
+        runButton.setBackground(new Color(139, 0, 0));
+        runButton.setForeground(Color.WHITE);
+        runButton.addActionListener(e -> runCode(code));
+
+        JPanel codePanel = new JPanel(new BorderLayout());
+        codePanel.add(codeLabel, BorderLayout.WEST);
+        codePanel.add(runButton, BorderLayout.EAST);
+
+        worksPanel.add(codePanel);
+        worksPanel.revalidate();
+        worksPanel.repaint();
+        saveWorks();
+    }
+
+    private void runCode(String code) {
+    SwingWorker<Void, String> worker = new SwingWorker<>() {
+        @Override
+        protected Void doInBackground() throws Exception {
+            String className = "DynamicClass";
+            String fullCode = "import java.util.Scanner;\n" +
+                              "public class " + className + " {\n" +
+                              "    public static void main(String[] args) {\n" +
+                              "        Scanner scanner = new Scanner(System.in);\n" +
+                              "        " + code + "\n" +
+                              "        scanner.close();\n" +
+                              "    }\n" +
+                              "}";
+
+            boolean needsScannerInput = code.contains("Scanner") || code.contains("nextInt") || code.contains("nextLine");
+            String userInput = null;
+
+            if (needsScannerInput) {
+                userInput = JOptionPane.showInputDialog("Please enter values (comma separated):");
+                if (userInput == null) {
+                    JOptionPane.showMessageDialog(null, "Input was cancelled.", "Cancelled", JOptionPane.INFORMATION_MESSAGE);
+                    return null;
+                }
+            }
+
+            JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+            DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+            StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null);
+
+            try (PrintWriter out = new PrintWriter(className + ".java")) {
+                out.println(fullCode);
+            }
+
+            JavaCompiler.CompilationTask task = compiler.getTask(null, fileManager, diagnostics, null, null,
+                    fileManager.getJavaFileObjectsFromStrings(Arrays.asList(className + ".java")));
+            boolean success = task.call();
+
+            StringBuilder output = new StringBuilder();
+
+            if (success) {
+                ProcessBuilder pb = new ProcessBuilder("java", className);
+                pb.redirectErrorStream(true);
+                Process process = pb.start();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
+
+                String line;
+                String[] inputs = userInput != null ? userInput.split(",") : new String[0];
+                int inputIndex = 0;
+
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append("\n");
+                    publish(line);
+
+                    if (line.contains("Enter a number:") || line.contains("Please enter a value:")) {
+                        if (inputIndex < inputs.length) {
+                            writer.write(inputs[inputIndex].trim() + "\n");
+                            writer.flush();
+                            inputIndex++;
+                        } else {
+                            writer.write("\n");
+                            writer.flush();
+                        }
+                    }
+                }
+                process.waitFor();
+            } else {
+                StringBuilder errorMsg = new StringBuilder("Compilation failed:\n");
+                for (Diagnostic<?> diagnostic : diagnostics.getDiagnostics()) {
+                    errorMsg.append(diagnostic).append("\n");
+                }
+                output.append(errorMsg.toString());
+            }
+            fileManager.close();
+
+            showOutputDialog(output.toString());
+            return null;
+        }
+
+        @Override
+        protected void process(List<String> chunks) {
+            for (String chunk : chunks) {
+            }
+        }
+
+        @Override
+        protected void done() {
+        }
+    };
+    worker.execute();
+}
+
+
+    private void showOutputDialog(String output) {
+    JOptionPane.showMessageDialog(this, output, "Output", JOptionPane.INFORMATION_MESSAGE);
+}
+
+    private void lockContent() {
+        knowledgeArea.setEditable(false);
+        lockButton.setEnabled(false);
+        editButton.setEnabled(true);
+    }
+
+    private void editContent() {
+        knowledgeArea.setEditable(true);
+        lockButton.setEnabled(true);
+        editButton.setEnabled(false);
+    }
+
+@SuppressWarnings("unchecked")
+private void loadWorks() {
+    File file = new File(WORKS_FILE);
+    
+    if (!file.exists() || file.length() == 0) {
+        System.out.println("No works file found or the file is empty.");
+        return; // Exit early if the file doesn't exist or is empty
+    }
+    
+    try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+        List<String> works = (List<String>) ois.readObject();
+        for (String work : works) {
+            System.out.println("Processing work entry: " + work);
+            if (work == null || work.isEmpty()) {
+                System.err.println("Empty or null entry found in works file.");
+                continue;
+            }
+
+            String[] parts = work.split(":");
+            if (parts.length == 2) {
+                addCode(parts[0], parts[1]);
+            } else {
+                System.err.println("Invalid work format: " + work);
+            }
+        }
+    } catch (FileNotFoundException e) {
+        System.err.println("File not found: " + e.getMessage());
+    } catch (EOFException e) {
+        System.err.println("Reached end of file unexpectedly: " + e.getMessage());
+    } catch (IOException | ClassNotFoundException e) {
+        e.printStackTrace();
+    }
+}
+
+    private void saveWorks() {
+    try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(WORKS_FILE))) {
+        List<String> works = new ArrayList<>();
+        for (Component component : worksPanel.getComponents()) {
+            if (component instanceof JPanel) {
+                JLabel label = (JLabel) ((JPanel) component).getComponent(0);
+                works.add(label.getText() + ":" + ""); // Saves code name, needs to save code if required
+            }
+        }
+        oos.writeObject(works);
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
+}
+
+    private void loadKnowledge() {
+        try (BufferedReader br = new BufferedReader(new FileReader(KNOWLEDGE_FILE))) {
+            String line;
+            StringBuilder content = new StringBuilder();
+            while ((line = br.readLine()) != null) {
+                content.append(line).append("\n");
+            }
+            knowledgeArea.setText(content.toString());
+        } catch (FileNotFoundException e) {
+            // File doesn't exist yet, ignore
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void saveKnowledge() {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(KNOWLEDGE_FILE))) {
+            bw.write(knowledgeArea.getText());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(EP::new);
+    }
+}

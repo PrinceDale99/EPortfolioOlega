@@ -1,0 +1,2 @@
+works_editable=false
+knowledge_editable=false

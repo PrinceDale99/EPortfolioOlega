@@ -1,0 +1,232 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Arrays;
+import javax.tools.*;
+
+public class EP extends JFrame {
+    private JTextArea ourKnowledgeArea;
+    private JPanel ourWorksArea;
+    private JButton addButton, lockButton, editButton;
+    private boolean isEditable = false;
+    private final String WORKS_FILE = "works.dat";
+    private final String KNOWLEDGE_FILE = "knowledge.dat";
+
+    public EP() {
+        setTitle("EP Application");
+        setSize(600, 600);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        // Header
+        JLabel headerLabel = new JLabel("Welcome to EP", JLabel.CENTER);
+        headerLabel.setFont(new Font("Poppins", Font.BOLD, 24));
+        add(headerLabel, BorderLayout.NORTH);
+
+        // Our Works Section
+        ourWorksArea = new JPanel();
+        ourWorksArea.setLayout(new BoxLayout(ourWorksArea, BoxLayout.Y_AXIS));
+        addButton = new JButton("Add Your Code");
+        addButton.addActionListener(e -> showAddCodeDialog());
+        ourWorksArea.add(addButton);
+        loadWorks(); // Load existing works
+        add(ourWorksArea, BorderLayout.WEST);
+
+        // Our Knowledge Section
+        JPanel knowledgePanel = new JPanel();
+        knowledgePanel.setLayout(new BorderLayout());
+        ourKnowledgeArea = new JTextArea();
+        ourKnowledgeArea.setEditable(false);
+        knowledgePanel.add(new JScrollPane(ourKnowledgeArea), BorderLayout.CENTER);
+        
+        lockButton = new JButton("Lock");
+        lockButton.addActionListener(e -> lockContent());
+        editButton = new JButton("Edit");
+        editButton.addActionListener(e -> editContent());
+        
+        JPanel buttonsPanel = new JPanel();
+        buttonsPanel.add(lockButton);
+        buttonsPanel.add(editButton);
+        knowledgePanel.add(buttonsPanel, BorderLayout.SOUTH);
+        
+        loadKnowledge(); // Load existing knowledge
+        add(knowledgePanel, BorderLayout.EAST);
+        
+        setVisible(true);
+    }
+
+    private void showAddCodeDialog() {
+        JDialog dialog = new JDialog(this, "Add Your Code", true);
+        dialog.setLayout(new GridLayout(3, 2));
+        JTextField codeNameField = new JTextField();
+        JTextArea codeArea = new JTextArea();
+        dialog.add(new JLabel("Code Name:"));
+        dialog.add(codeNameField);
+        dialog.add(new JLabel("Code:"));
+        dialog.add(new JScrollPane(codeArea));
+
+        JButton addCodeButton = new JButton("Add Code");
+        addCodeButton.addActionListener(e -> {
+            String codeName = codeNameField.getText();
+            String code = codeArea.getText();
+            if (codeName.isEmpty() || code.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog, "Please fill in both fields", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            addCode(codeName, code);
+            dialog.dispose();
+        });
+        
+        dialog.add(addCodeButton);
+        dialog.setSize(400, 300);
+        dialog.setVisible(true);
+    }
+
+    private void addCode(String codeName, String code) {
+        JLabel codeLabel = new JLabel(codeName);
+        JButton runButton = new JButton("Run Code");
+        runButton.addActionListener(e -> runCode(code));
+        
+        JPanel codePanel = new JPanel();
+        codePanel.setLayout(new BorderLayout());
+        codePanel.add(codeLabel, BorderLayout.WEST);
+        codePanel.add(runButton, BorderLayout.EAST);
+        
+        ourWorksArea.add(codePanel);
+        ourWorksArea.revalidate();
+        ourWorksArea.repaint();
+        saveWorks(); // Save works to file
+    }
+
+    private void runCode(String code) {
+    try {
+        String className = "DynamicClass";
+        String fullCode = "import java.util.Scanner;\n" + 
+                          "public class " + className + " {\n" + 
+                          "    public static void main(String[] args) {\n" + 
+                          "        Scanner scanner = new Scanner(System.in);\n" + 
+                          "        " + code + "\n" + 
+                          "        scanner.close();\n" + 
+                          "    }\n" + 
+                          "}";
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+        StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null);
+
+        // Write the code to a file
+        try (PrintWriter out = new PrintWriter(className + ".java")) {
+            out.println(fullCode);
+        }
+
+        // Compile the Java file
+        JavaCompiler.CompilationTask task = compiler.getTask(null, fileManager, diagnostics, null, null, 
+                                 fileManager.getJavaFileObjectsFromStrings(Arrays.asList(className + ".java")));
+        boolean success = task.call();
+
+        if (success) {
+            // Run the compiled code
+            ProcessBuilder pb = new ProcessBuilder("java", className);
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
+            
+            StringBuilder output = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line).append("\n");
+                if (line.contains("Enter a number:")) { // Adjust based on your input prompts
+                    writer.write("42\n"); // Example of input value
+                    writer.flush();
+                }
+            }
+            process.waitFor();
+            showOutputDialog(output.toString());
+        } else {
+            StringBuilder errorMsg = new StringBuilder("Compilation failed:\n");
+            for (Diagnostic<?> diagnostic : diagnostics.getDiagnostics()) {
+                errorMsg.append(diagnostic).append("\n");
+            }
+            showOutputDialog(errorMsg.toString());
+        }
+        fileManager.close();
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
+
+    private void showOutputDialog(String output) {
+        JOptionPane.showMessageDialog(this, output, "Output", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void lockContent() {
+        ourKnowledgeArea.setEditable(false);
+        lockButton.setEnabled(false);
+        editButton.setEnabled(true);
+    }
+
+    private void editContent() {
+        ourKnowledgeArea.setEditable(true);
+        lockButton.setEnabled(true);
+        editButton.setEnabled(false);
+    }
+
+@SuppressWarnings("unchecked")
+    private void loadWorks() {
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(WORKS_FILE))) {
+            List<String> works = (List<String>) ois.readObject();
+            for (String work : works) {
+                addCode(work.split(":")[0], work.split(":")[1]); // Assumes format "CodeName:Code"
+            }
+        } catch (FileNotFoundException e) {
+            // File doesn't exist yet, ignore
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void saveWorks() {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(WORKS_FILE))) {
+            List<String> works = new ArrayList<>();
+            for (Component component : ourWorksArea.getComponents()) {
+                if (component instanceof JPanel) {
+                    JLabel label = (JLabel) ((JPanel) component).getComponent(0);
+                    works.add(label.getText() + ":" + ""); // Saves code name, needs to save code if required
+                }
+            }
+            oos.writeObject(works);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void loadKnowledge() {
+        try (BufferedReader br = new BufferedReader(new FileReader(KNOWLEDGE_FILE))) {
+            String line;
+            StringBuilder content = new StringBuilder();
+            while ((line = br.readLine()) != null) {
+                content.append(line).append("\n");
+            }
+            ourKnowledgeArea.setText(content.toString());
+        } catch (FileNotFoundException e) {
+            // File doesn't exist yet, ignore
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void saveKnowledge() {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(KNOWLEDGE_FILE))) {
+            bw.write(ourKnowledgeArea.getText());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(EP::new);
+    }
+}
